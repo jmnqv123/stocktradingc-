@@ -1,0 +1,47 @@
+#include <iostream>
+#include <string>
+#include <curl/curl.h>
+
+int main() {
+  // Set up CURL to make an HTTP request to the Yahoo Finance API
+  CURL *curl = curl_easy_init();
+  curl_easy_setopt(curl, CURLOPT_URL, "https://finance.yahoo.com/quote/AAPL?p=AAPL");
+
+  // Set up a string to hold the response from the API
+  std::string response;
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, [&](char *data, size_t size, size_t nmemb, std::string *response) -> size_t {
+    response->append(data, size * nmemb);
+    return size * nmemb;
+  });
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+  // Make the request and check for errors
+  CURLcode res = curl_easy_perform(curl);
+  if (res != CURLE_OK) {
+    std::cerr << "Error: " << curl_easy_strerror(res) << std::endl;
+    return 1;
+  }
+
+  // Extract the current price from the response
+  std::string price = "unknown";
+  size_t pos = response.find("regularMarketPrice");
+  if (pos != std::string::npos) {
+    pos = response.find(":", pos);
+    if (pos != std::string::npos) {
+      pos = response.find("\"", pos);
+      if (pos != std::string::npos) {
+        size_t end = response.find("\"", pos + 1);
+        if (end != std::string::npos) {
+          price = response.substr(pos + 1, end - pos - 1);
+        }
+      }
+    }
+  }
+
+  // Print the current price
+  std::cout << "The current price of AAPL is " << price << std::endl;
+
+  // Clean up
+  curl_easy_cleanup(curl);
+  return 0;
+}
